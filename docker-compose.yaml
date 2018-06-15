@@ -1,5 +1,14 @@
 version: '3.2'
 services:
+  kibana:
+    image: docker.elastic.co/kibana/kibana:5.5.3
+    environment:
+      SERVER_NAME: localhost
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    networks:
+      - slackarchive
+    ports:
+      - "5601:5601"
   mongodb:
     image: mongo
     ports:
@@ -21,7 +30,7 @@ services:
     volumes:
       - ./elasticsearch/data:/usr/share/elasticsearch/data
     environment:
-      - "ES_JAVA_OPTS=-Xms2048m -Xmx2048m"
+      - 'ES_JAVA_OPTS=-Xms2048m -Xmx2048m'
       - xpack.security.enabled=false
     ulimits:
       memlock:
@@ -37,39 +46,12 @@ services:
   wait_for_dependencies:
     image: dadarek/wait-for-dependencies
     depends_on:
-      - mongodb
       - elasticsearch
-    command: mongodb:27017 elasticsearch:9200 
+      - mongodb
+      - kibana
+    command: elasticsearch:9200 mongodb:27017 kibana:5601
     networks:
       - slackarchive
-  slackarchive-init:
-    image: dutchcoders/slackarchive-init:latest
-    networks:
-      - slackarchive
-  slackarchive:
-    image: dutchcoders/slackarchive:latest
-    environment:
-      MONGODB_URI: mongodb://slackarchive:1234@mongodb:27017/slackarchive
-    ports:
-      - "8080:8080"
-      - "8443:8443"
-    entrypoint: /slackarchive/slackarchive --config /config/config.yaml
-    volumes:
-      - ./scripts:/scripts:ro
-      - ./slackarchive/config.yaml:/config/config.yaml:ro
-    networks:
-        - slackarchive
-  slackarchive-bot:
-    image: dutchcoders/slackarchive-bot:latest
-    environment:
-      MONGODBURL: http://elasticsearch:9200/flow/events/
-      ELASTICSEARCH_URL: http://elasticsearch:9200/flow/events/
-    volumes:
-      - ./scripts:/scripts
-      - ./slackarchive-bot/data:/data
-      - ./slackarchive-bot/config.yaml:/config/config.yaml:ro
-    networks:
-        - slackarchive
 networks:
     slackarchive:
         external: true
